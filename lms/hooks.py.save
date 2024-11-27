@@ -1,0 +1,409 @@
+from . import __version__ as app_version
+
+app_name = "frappe_lms"
+app_title = "Frappe LMS"
+app_publisher = "Frappe"
+app_description = "Frappe LMS App"
+app_icon_url = "/assets/lms/images/lms-logo.png"
+app_icon_title = "Learning"
+app_icon_route = "/lms"
+app_color = "grey"
+app_email = "jannat@frappe.io"
+app_license = "AGPL"
+
+# Includes in <head>
+# ------------------
+
+# include js, css files in header of desk.html
+# app_include_css = "/assets/lms/css/lms.css"
+# app_include_js = "/assets/lms/js/lms.js"
+
+# include js, css files in header of web template
+web_include_css = "lms.bundle.css"
+# web_include_css = "/assets/lms/css/lms.css"
+web_include_js = ["website.bundle.js"]
+
+# include custom scss in every website theme (without file extension ".scss")
+# website_theme_scss = "lms/public/scss/website"
+
+# include js, css files in header of web form
+# webform_include_js = {"doctype": "public/js/doctype.js"}
+# webform_include_css = {"doctype": "public/css/doctype.css"}
+
+# include js in page
+# page_js = {"page" : "public/js/file.js"}
+
+# include js in doctype views
+# doctype_js = {"doctype" : "public/js/doctype.js"}
+# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
+# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
+
+# Home Pages
+# ----------
+doctype_js = {
+    "Live Class": "public/js/liveclass.js"
+}
+
+# application home page (will override Website Settings)
+# home_page = "login"
+
+# website user home page (by Role)
+# role_home_page = {
+# 	"Role": "home_page"
+# }
+
+# Generators
+# ----------
+
+# automatically create page for each record of this doctype
+# website_generators = ["Web Page"]
+
+# Installation
+# ------------
+
+# before_install = "lms.install.before_install"
+after_install = "lms.install.after_install"
+after_sync = "lms.install.after_sync"
+before_uninstall = "lms.install.before_uninstall"
+setup_wizard_requires = "assets/lms/js/setup_wizard.js"
+
+# Desk Notifications
+# ------------------
+# See frappe.core.notifications.get_notification_config
+
+# notification_config = "lms.notifications.get_notification_config"
+
+# Permissions
+# -----------
+# Permissions evaluated in scripted ways
+
+# permission_query_conditions = {
+# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+# }
+#
+# has_permission = {
+# 	"Event": "frappe.desk.doctype.event.event.has_permission",
+# }
+
+# DocType Class
+# ---------------
+# Override standard doctype classes
+
+# Document Events
+# ---------------
+# Hook on document methods and events
+
+doc_events = {
+	"*": {
+		"on_change": [
+			"lms.lms.doctype.lms_badge.lms_badge.process_badges",
+		]
+	},
+	"Discussion Reply": {"after_insert": "lms.lms.utils.handle_notifications"},
+	"Notification Log": {"on_change": "lms.lms.utils.publish_notifications"},
+ "Live Class": {
+        "get_live_class": "To set up the backend API for fetching live class data from a Frappe server, you need to follow these steps:
+
+### 1. **Set Up the Frappe API Endpoint**:
+
+The first thing to do is configure an API endpoint on your Frappe server that your Vue.js application will call to fetch the live class data.
+
+#### Step-by-Step Guide to Create the API:
+
+1. **Create a Python Method to Fetch Live Classes**:
+   
+   You’ll need to create a method in your Frappe app that will handle the request and return the data for live classes. This method will be exposed as an API endpoint. Below are the steps for doing this:
+
+   1. **Create/Modify the Python File in Frappe App**:
+   
+      Go to your Frappe app (in your case, it seems to be `lms`) and locate or create a Python file to define your method. It could be something like `liveclass.py` inside the `lms` app.
+
+   2. **Define the Method**:
+   
+      In this file, you’ll write a method that fetches the live class data from the database and returns it as JSON. Here's an example of how to do it:
+
+      ```python
+      import frappe
+      from frappe.model.document import Document
+
+      @frappe.whitelist(allow_guest=True)  # This allows the API to be accessed by anyone (useful for frontend)
+      def get_live_classes(batch_name):
+          # Fetch live classes for the specified batch
+          live_classes = frappe.get_all(
+              'LMS Live Class',  # The name of the doctype
+              filters={'batch_name': batch_name},
+              fields=['title', 'description', 'time', 'date', 'start_url', 'join_url', 'jitsi_meeting_link']
+          )
+          
+          # Return the list of live classes
+          return {'message': live_classes}
+      ```
+
+      - `frappe.get_all` is used to fetch all the live class records for the given batch (`batch_name`).
+      - The `fields` argument specifies which fields to fetch from the `LMS Live Class` doctype.
+      - The `@frappe.whitelist` decorator makes this function available as an API endpoint that can be called from the frontend.
+
+2. **Add Your API Endpoint to `hooks.py`**:
+   
+   In your app’s `hooks.py`, you need to register this method as an API endpoint. Here’s how you can do it:
+
+   ```python
+   # In your lms/hooks.py file
+   doc_events = {
+       "LMS Live Class": {
+           "get_live_classes": "lms.lms.doctype.liveclass.liveclass.get_live_classes"
+       }
+   }
+   ```
+
+   This tells Frappe to expose the `get_live_classes` method as an API endpoint.
+
+3. **Test the Endpoint**:
+
+   After you have created the method, you can test it by navigating to the following URL in your browser or Postman:
+
+   ```
+   http://<your-frappe-server>/api/method/lms.lms.doctype.liveclass.liveclass.get_live_classes?batch_name=<batch_name>
+   ```
+
+   This should return a JSON response with the live classes data. For example:
+
+   ```json
+   {
+       "message": [
+           {
+               "title": "Live Class 1",
+               "description": "Introduction to Python",
+               "time": "2024-11-23 10:00:00",
+               "date": "2024-11-23",
+               "start_url": "http://example.com/start_url_1",
+               "join_url": "http://example.com/join_url_1",
+               "jitsi_meeting_link": "https://meet.jit.si/meeting_1"
+           },
+           {
+               "title": "Live Class 2",
+               "description": "Advanced JavaScript",
+               "time": "2024-11-24 14:00:00",
+               "date": "2024-11-24",
+               "start_url": "http://example.com/start_url_2",
+               "join_url": "http://example.com/join_url_2",
+               "jitsi_meeting_link": "https://meet.jit.si/meeting_2"
+           }
+       ]
+   }
+   ```
+
+   - Replace `<batch_name>` with the name of the batch you are interested in (e.g., `BatchA`).
+
+---
+
+### 2. **Access Control and Authentication (Optional)**:
+
+- By default, the `@frappe.whitelist(allow_guest=True)` decorator allows anyone (even unauthenticated users) to access the endpoint. If you want to restrict access to authenticated users or specific roles (such as administrators or instructors), you can adjust this by modifying the `allow_guest` argument.
+
+- If you need authentication, remove the `allow_guest=True` argument and configure proper authentication methods (e.g., by using session-based authentication or OAuth).
+
+---
+
+### 3. **Connect the Frontend (Vue.js) to the API**:
+
+Once you’ve set up the API on the backend, your Vue.js frontend can now make HTTP requests to this endpoint to retrieve the live class data.
+
+Here’s how you do that:
+
+1. **Make the Fetch Request** in Vue.js:
+
+   In the Vue component (`LiveClassList.vue`), you will call this API using the `fetch()` method or any other HTTP client like Axios. Here's the code snippet for making the API call:
+
+   ```javascript
+   <script>
+   import { ref, defineProps, onMounted } from "vue";
+
+   const liveClasses = ref([]);
+   const batchName = defineProps({
+     batch: {
+       type: String,
+       required: true,
+     },
+   });
+
+   onMounted(async () => {
+     try {
+       const response = await fetch(`/api/method/lms.lms.doctype.liveclass.liveclass.get_live_classes?batch_name=${batchName.batch}`);
+       const data = await response.json();
+       if (data.message) {
+         liveClasses.value = data.message;  // `message` contains the actual data returned from Frappe
+       } else {
+         console.error('Error fetching live classes');
+       }
+     } catch (error) {
+       console.error('Failed to fetch live classes', error);
+     }
+   });
+   </script>
+   ```
+
+   This script will automatically fetch the live class data when the component is mounted, and it will display the classes.
+
+---
+
+### 4. **Deploying and Testing**:
+
+1. **Backend Deployment**: Ensure your Frappe app is deployed and the server is running correctly with the new API endpoint accessible.
+2. **Frontend Testing**: Run your Vue.js app and ensure the frontend is able to fetch data from the backend using the correct API URL.
+
+Test the API response in Postman first, and then check if the frontend can correctly display the live classes.
+
+### 5. **Further Customization**:
+
+- **Error Handling**: Add better error handling to ensure that if the API fails, the user gets a friendly message.
+- **Caching**: You can cache the results to reduce load on the backend or fetch only when the data is stale.
+- **Pagination**: If there are many live classes, consider adding pagination or infinite scroll to load more data.
+
+---
+
+### Conclusion:
+
+By following these steps, you will have configured the backend API for live classes and connected it to your Vue.js frontend. You can now display live class data dynamically based on the batch provided in the frontend."
+    },
+}
+
+# Scheduled Tasks
+# ---------------
+scheduler_events = {
+	"hourly": [
+		"lms.lms.doctype.lms_certificate_request.lms_certificate_request.schedule_evals",
+		"lms.lms.api.update_course_statistics",
+	],
+	"daily": ["lms.job.doctype.job_opportunity.job_opportunity.update_job_openings"],
+}
+
+fixtures = ["Custom Field", "Function", "Industry", "LMS Category"]
+
+# Testing
+# -------
+
+# before_tests = "lms.install.before_tests"
+
+# Overriding Methods
+# ------------------------------
+#
+override_whitelisted_methods = {
+	# "frappe.desk.search.get_names_for_mentions": "lms.lms.utils.get_names_for_mentions",
+}
+#
+# each overriding function accepts a `data` argument;
+# generated from the base implementation of the doctype dashboard,
+# along with any modifications made in other Frappe apps
+# override_doctype_dashboards = {
+# 	"Task": "lms.task.get_dashboard_data"
+# }
+
+# exempt linked doctypes from being automatically cancelled
+#
+# auto_cancel_exempted_doctypes = ["Auto Repeat"]
+
+# Add all simple route rules here
+website_route_rules = [
+	{"from_route": "/lms/<path:app_path>", "to_route": "lms"},
+	{
+		"from_route": "/courses/<course_name>/<certificate_id>",
+		"to_route": "certificate",
+	},
+{"from_route": "/live-classes", "to_route": "live_class_page"},
+]
+
+website_redirects = [
+	{"source": "/update-profile", "target": "/edit-profile"},
+	{"source": "/courses", "target": "/lms/courses"},
+	{
+		"source": r"^/courses/.*$",
+		"target": "/lms/courses",
+	},
+	{"source": "/batches", "target": "/lms/batches"},
+	{
+		"source": r"/batches/(.*)",
+		"target": "/lms/batches",
+		"match_with_query_string": True,
+	},
+	{"source": "/job-openings", "target": "/lms/job-openings"},
+	{
+		"source": r"/job-openings/(.*)",
+		"target": "/lms/job-openings",
+		"match_with_query_string": True,
+	},
+	{"source": "/statistics", "target": "/lms/statistics"},
+]
+
+update_website_context = [
+	"lms.widgets.update_website_context",
+]
+
+jinja = {
+	"methods": [
+		"lms.lms.utils.get_signup_optin_checks",
+		"lms.lms.utils.get_tags",
+		"lms.lms.utils.get_lesson_count",
+		"lms.lms.utils.get_instructors",
+		"lms.lms.utils.get_lesson_index",
+		"lms.lms.utils.get_lesson_url",
+		"lms.page_renderers.get_profile_url",
+		"lms.overrides.user.get_palette",
+		"lms.lms.utils.is_instructor",
+	],
+	"filters": [],
+}
+## Specify the additional tabs to be included in the user profile page.
+## Each entry must be a subclass of lms.lms.plugins.ProfileTab
+# profile_tabs = []
+
+## Specify the extension to be used to control what scripts and stylesheets
+## to be included in lesson pages. The specified value must be be a
+## subclass of lms.plugins.PageExtension
+# lms_lesson_page_extension = None
+
+# lms_lesson_page_extensions = [
+# 	"lms.plugins.LiveCodeExtension"
+# ]
+
+has_website_permission = {
+	"LMS Certificate Evaluation": "lms.lms.doctype.lms_certificate_evaluation.lms_certificate_evaluation.has_website_permission",
+	"LMS Certificate": "lms.lms.doctype.lms_certificate.lms_certificate.has_website_permission",
+}
+
+## Markdown Macros for Lessons
+lms_markdown_macro_renderers = {
+	"Exercise": "lms.plugins.exercise_renderer",
+	"Quiz": "lms.plugins.quiz_renderer",
+	"YouTubeVideo": "lms.plugins.youtube_video_renderer",
+	"Video": "lms.plugins.video_renderer",
+	"Assignment": "lms.plugins.assignment_renderer",
+	"Embed": "lms.plugins.embed_renderer",
+	"Audio": "lms.plugins.audio_renderer",
+	"PDF": "lms.plugins.pdf_renderer",
+}
+
+# page_renderer to manage profile pages
+page_renderer = [
+	"lms.page_renderers.ProfileRedirectPage",
+	"lms.page_renderers.ProfilePage",
+	"lms.page_renderers.CoursePage",
+]
+
+# set this to "/" to have profiles on the top-level
+profile_url_prefix = "/users/"
+
+signup_form_template = "lms.plugins.show_custom_signup"
+
+on_session_creation = "lms.overrides.user.on_session_creation"
+
+add_to_apps_screen = [
+	{
+		"name": "lms",
+		"logo": "/assets/lms/images/lms-logo.png",
+		"title": "Learning",
+		"route": "/lms",
+		"has_permission": "lms.lms.api.check_app_permission",
+	}
+]

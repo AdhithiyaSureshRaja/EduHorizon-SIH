@@ -1,0 +1,12 @@
+<h1>Live Classes</h1>
+<ul>
+    {% for live_class in live_classes %}
+        <li>
+            <h3>{{ live_class.title }}</h3>
+            <p>Scheduled On: {{ live_class.schedule_date }}</p>
+            <a href="{{ live_class.jitsi_meeting_link }}" target="_blank">
+                Join Class
+            </a>
+        </li>
+    {% endfor %}
+</ul>

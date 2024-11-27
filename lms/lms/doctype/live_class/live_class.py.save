@@ -1,0 +1,190 @@
+import frappe
+from frappe.model.document import Document
+from frappe.utils import get_datetime
+from datetime import timedelta
+
+class LiveClass(Document):
+    def after_insert(self):
+        # Generate the Jitsi meeting link when the class is created
+        self.jitsi_meeting_link = self.generate_jitsi_meeting_link(self.title)
+        self.save()
+
+    def generate_jitsi_meeting_link(self, class_name):
+        # Replace spaces with hyphens for Jitsi URL
+        base_url = "https://jitsi.cis.com/"
+        return f"{base_url}{class_name.replace(' ', '-')}"
+
+    def validate(self):
+        # Ensure class start time is not in the past
+        if get_datetime(self.date) < get_datetime():
+            frappe.throw("Class start time cannot be in the past.")
+@frappe.whitelist()
+def get_published_live_classes(allow_guest=TrueTo set up the backend API for fetching live class data from a Frappe server, you need to follow these steps:
+
+### 1. **Set Up the Frappe API Endpoint**:
+
+The first thing to do is configure an API endpoint on your Frappe server that your Vue.js application will call to fetch the live class data.
+
+#### Step-by-Step Guide to Create the API:
+
+1. **Create a Python Method to Fetch Live Classes**:
+   
+   You’ll need to create a method in your Frappe app that will handle the request and return the data for live classes. This method will be exposed as an API endpoint. Below are the steps for doing this:
+
+   1. **Create/Modify the Python File in Frappe App**:
+   
+      Go to your Frappe app (in your case, it seems to be `lms`) and locate or create a Python file to define your method. It could be something like `liveclass.py` inside the `lms` app.
+
+   2. **Define the Method**:
+   
+      In this file, you’ll write a method that fetches the live class data from the database and returns it as JSON. Here's an example of how to do it:
+
+      ```python
+      import frappe
+      from frappe.model.document import Document
+
+      @frappe.whitelist(allow_guest=True)  # This allows the API to be accessed by anyone (useful for frontend)
+      def get_live_classes(batch_name):
+          # Fetch live classes for the specified batch
+          live_classes = frappe.get_all(
+              'LMS Live Class',  # The name of the doctype
+              filters={'batch_name': batch_name},
+              fields=['title', 'description', 'time', 'date', 'start_url', 'join_url', 'jitsi_meeting_link']
+          )
+          
+          # Return the list of live classes
+          return {'message': live_classes}
+      ```
+
+      - `frappe.get_all` is used to fetch all the live class records for the given batch (`batch_name`).
+      - The `fields` argument specifies which fields to fetch from the `LMS Live Class` doctype.
+      - The `@frappe.whitelist` decorator makes this function available as an API endpoint that can be called from the frontend.
+
+2. **Add Your API Endpoint to `hooks.py`**:
+   
+   In your app’s `hooks.py`, you need to register this method as an API endpoint. Here’s how you can do it:
+
+   ```python
+   # In your lms/hooks.py file
+   doc_events = {
+       "LMS Live Class": {
+           "get_live_classes": "lms.lms.doctype.liveclass.liveclass.get_live_classes"
+       }
+   }
+   ```
+
+   This tells Frappe to expose the `get_live_classes` method as an API endpoint.
+
+3. **Test the Endpoint**:
+
+   After you have created the method, you can test it by navigating to the following URL in your browser or Postman:
+
+   ```
+   http://<your-frappe-server>/api/method/lms.lms.doctype.liveclass.liveclass.get_live_classes?batch_name=<batch_name>
+   ```
+
+   This should return a JSON response with the live classes data. For example:
+
+   ```json
+   {
+       "message": [
+           {
+               "title": "Live Class 1",
+               "description": "Introduction to Python",
+               "time": "2024-11-23 10:00:00",
+               "date": "2024-11-23",
+               "start_url": "http://example.com/start_url_1",
+               "join_url": "http://example.com/join_url_1",
+               "jitsi_meeting_link": "https://meet.jit.si/meeting_1"
+           },
+           {
+               "title": "Live Class 2",
+               "description": "Advanced JavaScript",
+               "time": "2024-11-24 14:00:00",
+               "date": "2024-11-24",
+               "start_url": "http://example.com/start_url_2",
+               "join_url": "http://example.com/join_url_2",
+               "jitsi_meeting_link": "https://meet.jit.si/meeting_2"
+           }
+       ]
+   }
+   ```
+
+   - Replace `<batch_name>` with the name of the batch you are interested in (e.g., `BatchA`).
+
+---
+
+### 2. **Access Control and Authentication (Optional)**:
+
+- By default, the `@frappe.whitelist(allow_guest=True)` decorator allows anyone (even unauthenticated users) to access the endpoint. If you want to restrict access to authenticated users or specific roles (such as administrators or instructors), you can adjust this by modifying the `allow_guest` argument.
+
+- If you need authentication, remove the `allow_guest=True` argument and configure proper authentication methods (e.g., by using session-based authentication or OAuth).
+
+---
+
+### 3. **Connect the Frontend (Vue.js) to the API**:
+
+Once you’ve set up the API on the backend, your Vue.js frontend can now make HTTP requests to this endpoint to retrieve the live class data.
+
+Here’s how you do that:
+
+1. **Make the Fetch Request** in Vue.js:
+
+   In the Vue component (`LiveClassList.vue`), you will call this API using the `fetch()` method or any other HTTP client like Axios. Here's the code snippet for making the API call:
+
+   ```javascript
+   <script>
+   import { ref, defineProps, onMounted } from "vue";
+
+   const liveClasses = ref([]);
+   const batchName = defineProps({
+     batch: {
+       type: String,
+       required: true,
+     },
+   });
+
+   onMounted(async () => {
+     try {
+       const response = await fetch(`/api/method/lms.lms.doctype.liveclass.liveclass.get_live_classes?batch_name=${batchName.batch}`);
+       const data = await response.json();
+       if (data.message) {
+         liveClasses.value = data.message;  // `message` contains the actual data returned from Frappe
+       } else {
+         console.error('Error fetching live classes');
+       }
+     } catch (error) {
+       console.error('Failed to fetch live classes', error);
+     }
+   });
+   </script>
+   ```
+
+   This script will automatically fetch the live class data when the component is mounted, and it will display the classes.
+
+---
+
+### 4. **Deploying and Testing**:
+
+1. **Backend Deployment**: Ensure your Frappe app is deployed and the server is running correctly with the new API endpoint accessible.
+2. **Frontend Testing**: Run your Vue.js app and ensure the frontend is able to fetch data from the backend using the correct API URL.
+
+Test the API response in Postman first, and then check if the frontend can correctly display the live classes.
+
+### 5. **Further Customization**:
+
+- **Error Handling**: Add better error handling to ensure that if the API fails, the user gets a friendly message.
+- **Caching**: You can cache the results to reduce load on the backend or fetch only when the data is stale.
+- **Pagination**: If there are many live classes, consider adding pagination or infinite scroll to load more data.
+
+---
+
+### Conclusion:
+
+By following these steps, you will have configured the backend API for live classes and connected it to your Vue.js frontend. You can now display live class data dynamically based on the batch provided in the frontend.):
+    live_classes = frappe.get_all(
+        'LiveClass',
+        filters={'docstatus': 1},  # Only fetch published classes
+        fields=['title', 'jitsi_meeting_link']
+    )
+return live_classes
